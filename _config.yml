@@ -33,6 +33,9 @@ scanner:
   854: 64
   855: 64
   857: 64
+  
+#扫描次数
+scanTimes: 2
 
 #链接表格，将测压阀的测点序号对应至自定义的测点名称
 scannerLinkfile: ['scanner_link_1.xlsx','scanner_link_2.xlsx']
