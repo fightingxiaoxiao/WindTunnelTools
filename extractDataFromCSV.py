@@ -35,10 +35,6 @@ class pressureMeasurement:
         self.pitotTubes = {}     # 皮托管，1根测总压，1根测静压
 
         self.configParams = None
-        self.dataFiles = []      # 数据文件
-
-        self.samplingFrequency = None   # 采样频率
-        self.samplingTime = None        # 采样时间
 
     def staticPressure(self):
         pass
@@ -51,7 +47,8 @@ class pressureMeasurement:
         读取配置文件_config.yml.
         """
         with open('_config.yml', 'r') as f:
-            self.configParams = yaml.load(f, Loader=yaml.FullLoader)
+            # add Loader=yaml.FullLoader in Linux
+            self.configParams = yaml.load(f)
 
         try:
             self.configParams['dataFile'][self.angle]
@@ -67,6 +64,17 @@ class pressureMeasurement:
                 self.measurePoints[s_id] = []
             finally:
                 self.measurePoints[s_id] += [None for i in range(number)]
+
+    def readScannerInfo(self):
+        """
+        读取扫描阀和测点的连接关系.
+        """
+        for file in self.configParams['scannerLinkfile']:
+            for scanner in self.configParams['scanner']:
+                df = pd.read_excel(file, sheet_name=str(scanner), header=None)
+                df = df.dropna(axis=0)
+                print(np.array(df))
+
 
     def readDataFile(self):
         for file in self.configParams['dataFile'][self.angle]:
@@ -110,3 +118,4 @@ class measureTube:
 exp = pressureMeasurement(angle=0)
 exp.config()
 exp.readDataFile()
+exp.readScannerInfo()
