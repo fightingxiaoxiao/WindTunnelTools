@@ -16,6 +16,7 @@ limitations under the License.
 Python 3.7+ on Windows 10 is recommended for this script.
 """
 import multiprocessing  # 多线程
+from progressbar import *
 
 import meshio  # 读写网格
 import numpy as np  # 向量操作
@@ -97,13 +98,9 @@ class pressureMeasurement:
             for scanner_tube in self.measureTubes[s_index].values():
                 for i_tube in scanner_tube:
                     index = key_list.index(
-                        s_index)*self.configParams['scanner'][s_index] + scanner_tube[i_tube].index + self.maxScannerPoints*i_tube
-                    print(index)
-        """
-            for i in col[1:]:
-                mtube = measureTube(i, np.array(df[i]))
-                mtube.getCharacters()
-        """
+                        s_index)*self.configParams['scanner'][s_index] + scanner_tube[i_tube].index
+                    scanner_tube[i_tube].data = np.array(data[i_tube][index])
+                    scanner_tube[i_tube].getCharacters()
 
     def rotate(self):
         """
@@ -134,7 +131,24 @@ class measureTube:
         self.characters['std'] = np.std(self.data)
 
 
-exp = pressureMeasurement(angle=0)
-exp.config()
-exp.readScannerInfo()
-exp.readDataFile()
+def main(angle_i, exp_list):
+    #print("Processing angle " + str(angle_i*15)+"...\r",end='')
+    exp = pressureMeasurement(angle=angle_i*15)
+    exp.config()
+    exp.readScannerInfo()
+    exp.readDataFile()
+    exp_list[i*15] = exp
+
+
+if __name__ == '__main__':
+
+    exp_list = {}
+    #p = multiprocessing.Pool(4)
+    widgets = ['Progress: ', Percentage(), ' ', Bar(marker=RotatingMarker('>-=')),
+               ' ', ETA()]
+    pbar = ProgressBar(widgets=widgets, maxval=23).start()
+    for i in range(24):
+        main(i, exp_list)
+        pbar.update(i)
+    pbar.finish()
+    #print(exp_list.keys())
