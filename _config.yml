@@ -38,10 +38,10 @@ scanner:
 scanTimes: 2
 
 #链接表格，将测压阀的测点序号对应至自定义的测点名称
-scannerLinkfile: ['scanner_link_1.xlsx','scanner_link_2.xlsx']
+scannerLinkfile: ["./link/scanner_link_1.xlsx", "./link/scanner_link_2.xlsx"]
 
 #定义皮托管在链接表格中的名称
-pitotTubesLinkName: ['pitot_1','pitot_2']
+pitotTubesLinkName: ["pitot_1", "pitot_2"]
 
 # 采样频率(Hz)
 samplingFrequency: 256
