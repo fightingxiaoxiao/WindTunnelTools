@@ -108,6 +108,25 @@ class pressureMeasurement:
         """
         pass
 
+    def write(self, writer, sort_law):
+        """
+        """
+        tubeList = []
+        tubeNameList = []
+        for scanner in self.measureTubes.values():
+            for MeasureTube in scanner.values():
+                for singleMeasureTube in MeasureTube.values():
+                    tubeList.append([singleMeasureTube.characters['avg'],
+                                     singleMeasureTube.characters['max'],
+                                     singleMeasureTube.characters['min'],
+                                     singleMeasureTube.characters['std'], ])
+                    tubeNameList.append(singleMeasureTube.name)
+        df = pd.DataFrame(data=tubeList, columns=['avg', 'max', 'min', 'std'])
+        df.index = tubeNameList
+        tubeNameList.sort(key=sort_law)
+        df = df.loc[tubeNameList]
+        df.to_excel(writer, sheet_name=str(self.angle))
+
 
 class measureTube:
     """
@@ -143,9 +162,18 @@ def main(angle_i, exp_list):
 if __name__ == '__main__':
     exp_list = {}
     widgets = ['Progress: ', Percentage(), ' ', Bar(
-        marker='#'), ' ', ETA(), '  ', FormatLabel('Processing angle %(value)d..'),AnimatedMarker(markers='|/-\\')]
+        marker='#'), ' ', ETA(), '  ', FormatLabel('Processing angle %(value)d..'), AnimatedMarker(markers='|/-\\')]
     pbar = ProgressBar(widgets=widgets, maxval=345).start()
     for i in range(24):
         main(i*15, exp_list)
         pbar.update(i*15)
     pbar.finish()
+
+    writer = pd.ExcelWriter('result.xlsx')
+
+    def sort_law(x):
+        return (int(x.split('-')[0]), int(x.split('-')[1]), int(x.split('-')[2]))
+
+    for exp in exp_list.values():
+        exp.write(writer, sort_law)
+    writer.close()
