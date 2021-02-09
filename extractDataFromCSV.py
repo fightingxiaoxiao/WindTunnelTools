@@ -133,22 +133,19 @@ class measureTube:
 
 def main(angle_i, exp_list):
     #print("Processing angle " + str(angle_i*15)+"...\r",end='')
-    exp = pressureMeasurement(angle=angle_i*15)
+    exp = pressureMeasurement(angle=angle_i)
     exp.config()
     exp.readScannerInfo()
     exp.readDataFile()
-    exp_list[i*15] = exp
+    exp_list[angle_i] = exp
 
 
 if __name__ == '__main__':
-
     exp_list = {}
-    #p = multiprocessing.Pool(4)
-    widgets = ['Progress: ', Percentage(), ' ', Bar(marker=RotatingMarker('>-=')),
-               ' ', ETA()]
-    pbar = ProgressBar(widgets=widgets, maxval=23).start()
+    widgets = ['Progress: ', Percentage(), ' ', Bar(
+        marker='#'), ' ', ETA(), '  ', FormatLabel('Processing angle %(value)d..'),AnimatedMarker(markers='|/-\\')]
+    pbar = ProgressBar(widgets=widgets, maxval=345).start()
     for i in range(24):
-        main(i, exp_list)
-        pbar.update(i)
+        main(i*15, exp_list)
+        pbar.update(i*15)
     pbar.finish()
-    #print(exp_list.keys())
