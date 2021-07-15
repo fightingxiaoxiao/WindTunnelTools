@@ -35,16 +35,14 @@ class pressureMeasurement:
         """
         self.measureTubes = {}  # {851:[tube1,tube2,tube3,...],...}
         self.angle = angle       # 风攻角
-        self.pitotTubes = {}     # 皮托管，1根测总压，1根测静压
+        self.pitotTubes = {'pitot_0': [], 'pitot_1': []}     # 皮托管，1根测总压，1根测静压
 
         self.configParams = None
         self.maxScannerPoints = 0
 
-    def staticPressure(self):
-        pass
-
-    def dynamicPressure(self):
-        pass
+        self.dynamicPressure = []
+        self.staticPressure = []
+        self.referenceVelocity = []
 
     def config(self):
         """
@@ -60,6 +58,8 @@ class pressureMeasurement:
             print("Error: Cannot find angle " +
                   str(self.angle)+" in config file.")
             exit()
+
+        self.referenceVelocity = self.configParams['referenceVelocity']
 
     def readScannerInfo(self):
         """
@@ -82,6 +82,16 @@ class pressureMeasurement:
                     if int(item[0]) not in self.measureTubes[scanner].keys():
                         self.measureTubes[scanner][int(item[0])] = {}
                     self.measureTubes[scanner][int(item[0])][scanTimes] = mtube
+
+            pitot_tube_0 = measureTube(self.configParams['pitotTubesLinkName']['pitot_0'][scanTimes][1],
+                                       'pitot_0',
+                                       self.configParams['pitotTubesLinkName']['pitot_0'][scanTimes][0])
+            self.pitotTubes['pitot_0'].append(pitot_tube_0)
+
+            pitot_tube_1 = measureTube(self.configParams['pitotTubesLinkName']['pitot_1'][scanTimes][1],
+                                       'pitot_1',
+                                       self.configParams['pitotTubesLinkName']['pitot_1'][scanTimes][0])
+            self.pitotTubes['pitot_1'].append(pitot_tube_1)
             scanTimes += 1
 
     def readDataFile(self):
@@ -100,6 +110,42 @@ class pressureMeasurement:
                     index = key_list.index(
                         s_index)*self.configParams['scanner'][s_index] + scanner_tube[i_tube].index
                     scanner_tube[i_tube].data = np.array(data[i_tube][index])
+
+                    
+
+        for pitot in self.pitotTubes.values():
+            for pitot_i in range(len(pitot)):
+                index = key_list.index(
+                    pitot[pitot_i].scanner)*self.configParams['scanner'][pitot[pitot_i].scanner] + pitot[pitot_i].index
+                pitot[pitot_i].data = np.array(data[pitot_i][index])
+                pitot[pitot_i].getCharacters()
+
+    def classifyPitotTubes(self):
+        for i in range(self.configParams['scanTimes']):
+            p_0 = self.pitotTubes['pitot_0'][i].characters['avg']
+            p_1 = self.pitotTubes['pitot_1'][i].characters['avg']
+
+            self.dynamicPressure.append(abs(p_0-p_1))
+            self.staticPressure.append(min(p_0, p_1))
+
+            """
+            self.referenceVelocity.append(
+                (self.dynamicPressure[i] / self.configParams['rho']*2) ** 0.5)
+            """
+
+            if p_0 >= p_1:
+                self.pitotTubes['pitot_0'][i].pitotProperty = 2
+                self.pitotTubes['pitot_1'][i].pitotProperty = 1
+            else:
+                self.pitotTubes['pitot_0'][i].pitotProperty = 1
+                self.pitotTubes['pitot_1'][i].pitotProperty = 2
+
+    def generateCoeff(self):
+        for s_index in self.measureTubes:
+            for scanner_tube in self.measureTubes[s_index].values():
+                for i_tube in scanner_tube:
+                    scanner_tube[i_tube].convertPressureCoeff(
+                        self.configParams['rho'], self.referenceVelocity, self.staticPressure, i_tube)
                     scanner_tube[i_tube].getCharacters()
 
     def rotate(self):
@@ -119,7 +165,7 @@ class pressureMeasurement:
                     tubeList.append([singleMeasureTube.characters['avg'],
                                      singleMeasureTube.characters['max'],
                                      singleMeasureTube.characters['min'],
-                                     singleMeasureTube.characters['std'], ])
+                                     singleMeasureTube.characters['std']])
                     tubeNameList.append(singleMeasureTube.name)
         df = pd.DataFrame(data=tubeList, columns=['avg', 'max', 'min', 'std'])
         df.index = tubeNameList
@@ -142,6 +188,7 @@ class measureTube:
         self.samplingTime = None        # 采样时间
         self.linkPoint = None           # 链接名称
         self.characters = {}
+        self.pitotProperty = 0          # 0:不是皮托管  1: 测静压皮托管  2: 测总压皮托管
 
     def getCharacters(self):
         self.characters['max'] = np.max(self.data)
@@ -149,13 +196,19 @@ class measureTube:
         self.characters['avg'] = np.mean(self.data)
         self.characters['std'] = np.std(self.data)
 
+    def convertPressureCoeff(self, rho, refVelocity, staticPressure, scanTimes):
+        self.data -= staticPressure[scanTimes]
+        self.data /= 0.5*rho*refVelocity**2
+
 
 def main(angle_i, exp_list):
-    #print("Processing angle " + str(angle_i*15)+"...\r",end='')
+    # print("Processing angle " + str(angle_i*15)+"...\r",end='')
     exp = pressureMeasurement(angle=angle_i)
     exp.config()
     exp.readScannerInfo()
     exp.readDataFile()
+    exp.classifyPitotTubes()
+    exp.generateCoeff()
     exp_list[angle_i] = exp
 
 
@@ -169,8 +222,9 @@ if __name__ == '__main__':
         pbar.update(i*15)
     pbar.finish()
 
-    print('Output Excel file...',end="")
+    print('Output Excel file...', end="")
     writer = pd.ExcelWriter('result.xlsx')
+
     def sort_law(x):
         return (int(x.split('-')[0]), int(x.split('-')[1]), int(x.split('-')[2]))
 
