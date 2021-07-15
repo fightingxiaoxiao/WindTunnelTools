@@ -58,6 +58,9 @@ class aerodynamicalBalance:
         self.F = np.dot(self.array, self.F.T)
         self.F = self.F.T
 
+    def scale(self, coeff):
+        self.F *= coeff
+
     def readTXTFromDiv5(self, filename):
         """
         [input]
@@ -71,17 +74,19 @@ class aerodynamicalBalance:
         df = []
         with open(filename, 'r') as f:
             for line in f:
-                if len(line.split()) < 7:
+                if len(line.split()) < 5:
                     continue
-                Fx = float(line.split()[2])  # 阻力
-                Fy = float(line.split()[4])  # 侧力
-                Mx = float(line.split()[5])
-                My = float(line.split()[6])
+                Fx = float(line.split()[3])  # 阻力
+                Fy = float(line.split()[3])  # 侧力
+                Mx = float(line.split()[3])
+                My = float(line.split()[3])
                 Mz = float(line.split()[3])  # 扭矩
 
                 df.append([Fx, Fy, Mx, My, Mz])
         df = np.array(df)
-        self.F = (df[1:] - df[0]*0.8)*9.8*3
+        print(df)
+        self.F = (df[1:] - df[0])*9.8
+        print(self.F)
 
     def writeCSV(self, filename):
         df = pd.DataFrame(self.F, columns=['Fx', 'Fy', 'Mx', 'My', 'Mz'])
@@ -89,7 +94,7 @@ class aerodynamicalBalance:
 
 
 exp = aerodynamicalBalance()
-exp.readTXTFromDiv5("./2/S02sz.txt")
+exp.readTXTFromDiv5("./TP_3/S03sz.txt")
 
 
 #                         A_x,        A_y,       A_Mx,      A_My,        A_Mz
@@ -114,6 +119,11 @@ exp.solve()
 
 exp.reverse()
 exp.left_offset(5)
-print(exp.F)
 
-exp.writeCSV("test2.csv")
+exp.scale([100**2*(86/8)**2,
+           100**2*(86/8)**2,
+           100**3*(86/8)**2,
+           100**3*(86/8)**2,
+           100**3*(86/8)**2])
+print(exp.F)
+exp.writeCSV("test5.csv")

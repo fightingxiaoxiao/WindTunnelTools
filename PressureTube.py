@@ -13,16 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-Python 3.7+ on Windows 10 is recommended for this script.
+Python 3.7+ is recommended for this script.
 """
-import multiprocessing  # 多线程
+#import multiprocessing  # 多线程
 from progressbar import *
 
 import meshio  # 读写网格
 import numpy as np  # 向量操作
 import pandas as pd  # 读写表格
 import yaml  # 配置文件
-
+import platform
 
 class pressureMeasurement:
     """
@@ -50,13 +50,18 @@ class pressureMeasurement:
         """
         with open('_config.yml', 'r') as f:
             # add Loader=yaml.FullLoader in Linux
-            self.configParams = yaml.load(f)
-
+            if platform.system()=='Linux':
+                self.configParams = yaml.load(f, Loader=yaml.FullLoader)
+            elif platform.system()=='Windows':
+                self.configParams = yaml.load(f)
+            else:
+                print("Unknown system.")
+                exit()
         try:
             self.configParams['dataFile'][self.angle]
         except KeyError:
             print("Error: Cannot find angle " +
-                  str(self.angle)+" in config file.")
+                  str(self.angle) + " in config file.")
             exit()
 
         self.referenceVelocity = self.configParams['referenceVelocity']
@@ -108,15 +113,13 @@ class pressureMeasurement:
             for scanner_tube in self.measureTubes[s_index].values():
                 for i_tube in scanner_tube:
                     index = key_list.index(
-                        s_index)*self.configParams['scanner'][s_index] + scanner_tube[i_tube].index
+                        s_index) * self.configParams['scanner'][s_index] + scanner_tube[i_tube].index
                     scanner_tube[i_tube].data = np.array(data[i_tube][index])
-
-                    
 
         for pitot in self.pitotTubes.values():
             for pitot_i in range(len(pitot)):
                 index = key_list.index(
-                    pitot[pitot_i].scanner)*self.configParams['scanner'][pitot[pitot_i].scanner] + pitot[pitot_i].index
+                    pitot[pitot_i].scanner) * self.configParams['scanner'][pitot[pitot_i].scanner] + pitot[pitot_i].index
                 pitot[pitot_i].data = np.array(data[pitot_i][index])
                 pitot[pitot_i].getCharacters()
 
@@ -125,7 +128,7 @@ class pressureMeasurement:
             p_0 = self.pitotTubes['pitot_0'][i].characters['avg']
             p_1 = self.pitotTubes['pitot_1'][i].characters['avg']
 
-            self.dynamicPressure.append(abs(p_0-p_1))
+            self.dynamicPressure.append(abs(p_0 - p_1))
             self.staticPressure.append(min(p_0, p_1))
 
             """
@@ -198,7 +201,7 @@ class measureTube:
 
     def convertPressureCoeff(self, rho, refVelocity, staticPressure, scanTimes):
         self.data -= staticPressure[scanTimes]
-        self.data /= 0.5*rho*refVelocity**2
+        self.data /= 0.5 * rho * refVelocity**2
 
 
 def main(angle_i, exp_list):
@@ -218,8 +221,8 @@ if __name__ == '__main__':
         marker='#'), ' ', ETA(), '  ', FormatLabel('Processing angle %(value)d..'), AnimatedMarker(markers='|/-\\')]
     pbar = ProgressBar(widgets=widgets, maxval=345).start()
     for i in range(24):
-        main(i*15, exp_list)
-        pbar.update(i*15)
+        main(i * 15, exp_list)
+        pbar.update(i * 15)
     pbar.finish()
 
     print('Output Excel file...', end="")
