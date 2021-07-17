@@ -87,6 +87,7 @@ class pressureMeasurement:
         for file in self.configParams['scannerLinkfile']:
             for scanner in self.configParams['scanner']:
                 df = pd.read_excel(file, sheet_name=str(scanner), header=None)
+                df = df.iloc[:,:2]
                 df = np.array(df.dropna(axis=0))
                 for item in df:
                     mtube = measureTube(int(item[0]), str(item[1]), scanner)
