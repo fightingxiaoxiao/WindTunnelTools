@@ -15,7 +15,7 @@ limitations under the License.
 
 Python 3.7+ is recommended for this script.
 """
-#import multiprocessing  # 多线程
+# import multiprocessing  # 多线程
 from progressbar import *
 
 import meshio  # 读写网格
@@ -23,6 +23,7 @@ import numpy as np  # 向量操作
 import pandas as pd  # 读写表格
 import yaml  # 配置文件
 import platform
+
 
 class pressureMeasurement:
     """
@@ -50,9 +51,9 @@ class pressureMeasurement:
         """
         with open('_config.yml', 'r') as f:
             # add Loader=yaml.FullLoader in Linux
-            if platform.system()=='Linux':
+            if platform.system() == 'Linux':
                 self.configParams = yaml.load(f, Loader=yaml.FullLoader)
-            elif platform.system()=='Windows':
+            elif platform.system() == 'Windows':
                 self.configParams = yaml.load(f)
             else:
                 print("Unknown system.")
@@ -64,7 +65,14 @@ class pressureMeasurement:
                   str(self.angle) + " in config file.")
             exit()
 
-        self.referenceVelocity = self.configParams['referenceVelocity']
+        if len(self.configParams['referenceVelocity']) != 0:
+            if len(self.configParams['referenceVelocity']) == self.configParams['scanTimes']:
+                self.referenceVelocity = self.configParams['referenceVelocity']
+            else:
+                raise Exception(
+                    'Error: scanTimes does not equal to the length of referenceVelocity.')
+        else:
+            pass
 
     def readScannerInfo(self):
         """
@@ -131,10 +139,9 @@ class pressureMeasurement:
             self.dynamicPressure.append(abs(p_0 - p_1))
             self.staticPressure.append(min(p_0, p_1))
 
-            """
-            self.referenceVelocity.append(
-                (self.dynamicPressure[i] / self.configParams['rho']*2) ** 0.5)
-            """
+            if len(self.referenceVelocity) != self.configParams['scanTimes']:
+                self.referenceVelocity.append(
+                    (self.dynamicPressure[i] / self.configParams['rho'] * 2) ** 0.5)
 
             if p_0 >= p_1:
                 self.pitotTubes['pitot_0'][i].pitotProperty = 2
@@ -201,7 +208,7 @@ class measureTube:
 
     def convertPressureCoeff(self, rho, refVelocity, staticPressure, scanTimes):
         self.data -= staticPressure[scanTimes]
-        self.data /= 0.5 * rho * refVelocity**2
+        self.data /= 0.5 * rho * refVelocity[scanTimes]**2
 
 
 def main(angle_i, exp_list):
